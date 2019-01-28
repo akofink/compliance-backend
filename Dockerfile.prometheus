@@ -1,0 +1,5 @@
+from centos/ruby-25-centos7
+workdir /app
+add . .
+add entrypoint.prometheus.sh /app/
+expose 9394

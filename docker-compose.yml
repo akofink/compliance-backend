@@ -1,5 +1,9 @@
 version: "3"
 services:
+  prometheus_exporter:
+    build: Dockerfile.prometheus
+    entrypoint: ./entrypoint.prometheus.sh
+    restart: on-failure
   db:
     image: postgres
     restart: on-failure

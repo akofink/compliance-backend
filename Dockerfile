@@ -10,6 +10,6 @@ run apt-get update && apt-get install -y qt5-default libqt5webkit5-dev \
 
 run bundle
 
-add entrypoint.sh /app/
+add entrypoint.backend.sh /app/
 
 expose 3000

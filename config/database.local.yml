@@ -1,0 +1,24 @@
+<% user = ENV.key?("POSTGRESQL_ADMIN_PASSWORD") ? "postgres" : ENV["POSTGRESQL_USER"] %>
+<% password = ENV.key?("POSTGRESQL_ADMIN_PASSWORD") ? ENV["POSTGRESQL_ADMIN_PASSWORD"] : ENV["POSTGRESQL_PASSWORD"] %>
+<% db_service = ENV.fetch("DATABASE_SERVICE_NAME","").upcase.sub("-", "_") %>
+
+
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  pool: <%= ENV["POSTGRESQL_MAX_CONNECTIONS"] || 5 %>
+  username: compliance
+  password: password1
+  host: <%= ENV["#{db_service}_SERVICE_HOST"] %>
+
+test:
+  <<: *default
+  database: insights_compliance_test
+
+production:
+  <<: *default
+  database: insights_compliance_prod
+
+development:
+  <<: *default
+  database: insights_compliance_dev
