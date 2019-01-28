@@ -22,7 +22,7 @@ services:
   racecar:
     build: .
     restart: on-failure
-    entrypoint: bash -c 'KAFKAMQ=kafka:29092 bundle exec racecar ComplianceReportsConsumer'
+    entrypoint: bash -c 'KAFKAMQ=kafka:29092 bundle exec racecar -l log/racecar.log ComplianceReportsConsumer'
 networks:
   default:
     external:
