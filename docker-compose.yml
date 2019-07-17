@@ -16,6 +16,8 @@ services:
       - '3000:3000'
     volumes:
       - .:/app:z
+    environment:
+      - X-RH-IDENTITY=eyJpZGVudGl0eSI6eyJhY2NvdW50X251bWJlciI6IjEyMTI3MjkiLCJpbnRlcm5hbCI6eyJvcmdfaWQiOiI1NDMyMSJ9LCJ1c2VyIjp7InVzZXJuYW1lIjoicmhuLWVuZ2luZWVyaW5nLWFrb2ZpbmsifX19
     depends_on:
       - db
       - prometheus

@@ -15,14 +15,14 @@ class HostInventoryAPI
   end
 
   def host_already_in_inventory
-    response = connection.get(@url, {}, 'X_RH_IDENTITY' => @b64_identity)
-    find_results(JSON.parse(response.body))
+    response = connection.get(@url, {})
+    find_results(JSON.parse(response.body)) if response.success?
   end
 
   def create_host_in_inventory
     response = connection.post(@url) do |req|
       req.headers['Content-Type'] = 'application/json'
-      req.headers['X_RH_IDENTITY'] = @b64_identity
+      # req.headers['X_RH_IDENTITY'] = @b64_identity
       req.body = create_host_body
     end
 
@@ -57,6 +57,8 @@ class HostInventoryAPI
   def connection
     Faraday.new do |f|
       f.response :raise_error
+      f.ssl[:verify] = Rails.env.production?
+      f.basic_auth 'rhn-engineering-akofink', 'redhat'
       f.adapter Faraday.default_adapter # this must be the last middleware
     end
   end
