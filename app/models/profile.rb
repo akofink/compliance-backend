@@ -13,9 +13,12 @@ class Profile < ApplicationRecord
   belongs_to :policy, optional: true
   belongs_to :account, optional: true
   belongs_to :business_objective, optional: true
+  belongs_to :benchmark, class_name: "Xccdf::Benchmark"
 
-  validates :ref_id, uniqueness: { scope: %i[account_id name] }, presence: true
+  validates :ref_id, uniqueness: { scope: %i[account_id name benchmark_id] },
+                     presence: true
   validates :name, presence: true
+  validates :benchmark_id, presence: true
   validates :compliance_threshold, numericality: true
 
   after_update :destroy_orphaned_business_objective
