@@ -46,13 +46,17 @@ class DatastreamImporter
   end
 
   def save_rule_references(op_rule_references: [])
-    op_rule_references.map do |op_rule_reference|
-      save_rule_reference(op_rule_reference: op_rule_reference)
+    rule_references = op_rule_references.map do |op_rule_reference|
+      find_rule_reference(op_rule_reference: op_rule_reference)
     end
+
+    RuleReference.import(rule_references, ignore: true)
+
+    rule_references
   end
 
-  def save_rule_reference(op_rule_reference: OpenscapParser::RuleRefernece)
-    RuleReference.find_or_create_by(
+  def find_rule_reference(op_rule_reference: OpenscapParser::RuleRefernece)
+    RuleReference.find_or_initialize_by(
       href: op_rule_reference.href,
       label: op_rule_reference.label
     )
@@ -61,14 +65,18 @@ class DatastreamImporter
   def save_rules(benchmark: Xccdf::Benchmark.new,
                  rule_references: [],
                  op_rules: [])
-    op_rules.map do |op_rule|
-      save_rule(benchmark: benchmark,
-                rule_references: rule_references,
-                op_rule: op_rule)
+    rules = op_rules.map do |op_rule|
+      update_rule(benchmark: benchmark,
+                  rule_references: rule_references,
+                  op_rule: op_rule)
     end
+
+    Rule.import(rules, ignore: true)
+
+    rules
   end
 
-  def save_rule(benchmark: Xccdf::Benchmark.new,
+  def update_rule(benchmark: Xccdf::Benchmark.new,
                 rule_references: [],
                 op_rule: OpenscapParser::Rule.new)
     selected_rule_references = rule_references.select do |rule_reference|
@@ -77,21 +85,27 @@ class DatastreamImporter
     end
 
     rule = find_rule(benchmark: benchmark, op_rule: op_rule)
+    save_rule_identifier(op_rule_identifier: op_rule.rule_identifier,
+                         rule: rule)
 
-    rule_identifier = create_rule_identifier(
-      op_rule_identifier: op_rule.rule_identifier)
+    rule.assign_attributes(
+      title: op_rule.title,
+      description: op_rule.description,
+      severity: op_rule.severity,
+      rationale: op_rule.rationale,
+      rule_references: selected_rule_references
+    )
 
-    update_rule(rule: rule,
-                rule_references: selected_rule_references,
-                rule_identifier: rule_identifier,
-                op_rule: op_rule)
+    rule
   end
 
-  def create_rule_identifier(
-    op_rule_identifier: OpenscapParser::RuleIdentifier.new)
+  def save_rule_identifier(
+    op_rule_identifier: OpenscapParser::RuleIdentifier.new,
+    rule: Rule.new)
     RuleIdentifier.find_or_create_by(
       label: op_rule_identifier.label,
-      system: op_rule_identifier.system
+      system: op_rule_identifier.system,
+      rule: rule
     )
   end
 
@@ -103,42 +117,33 @@ class DatastreamImporter
     )
   end
 
-  def update_rule(rule: Rule.new,
-                  rule_references: [],
-                  rule_identifier: RuleIdentifier.new,
-                  op_rule: OpenscapParser::Rule.new)
-    rule.update(
-      title: op_rule.title,
-      description: op_rule.description,
-      severity: op_rule.severity,
-      rationale: op_rule.rationale,
-      rule_references: rule_references,
-      rule_identifier: rule_identifier
-    )
-
-    rule
-  end
-
   def save_profiles(benchmark: Xccdf::Benchmark.new,
                     op_profiles: [],
                     rules: [])
-    op_profiles.map do |op_profile|
-      save_profile(benchmark: benchmark, op_profile: op_profile, rules: rules)
+    profiles = op_profiles.map do |op_profile|
+      update_profile(benchmark: benchmark, op_profile: op_profile, rules: rules)
     end
+
+    Profile.import(profiles, ignore: true)
+
+    profiles
   end
 
-  def save_profile(benchmark: Xccdf::Benchmark.new,
+  def update_profile(benchmark: Xccdf::Benchmark.new,
                    op_profile: OpenscapParser::Profile.new,
                    rules: [])
     selected_rules = rules.select do |rule|
       op_profile.selected_rule_ids.include?(rule.ref_id)
     end
 
-    update_profile(benchmark: benchmark,
-                   op_profile: op_profile,
-                   rules: selected_rules,
-                   profile: find_profile(benchmark: benchmark,
-                                         op_profile: op_profile))
+    profile = find_profile(benchmark: benchmark, op_profile: op_profile)
+
+    profile.assign_attributes(
+      description: op_profile.description,
+      rules: selected_rules
+    )
+
+    profile
   end
 
   def find_profile(benchmark: Xccdf::Benchmark.new,
@@ -148,16 +153,6 @@ class DatastreamImporter
       name: op_profile.title,
       account_id: nil,
       benchmark_id: benchmark.id
-    )
-  end
-
-  def update_profile(benchmark: Xccdf::Benchmark.new,
-                     op_profile: OpenscapParser::Profile.new,
-                     rules: [],
-                     profile: Profile.new)
-    profile.update(
-      description: op_profile.description,
-      rules: rules
     )
   end
 end
