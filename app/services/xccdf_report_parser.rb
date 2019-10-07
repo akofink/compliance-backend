@@ -10,14 +10,14 @@ class EmptyMetadataError < StandardError; end
 # Error to raise if the format of the report is wrong
 class WrongFormatError < StandardError; end
 
-# Takes in a path to an XCCDF file, returns all kinds of properties about it
+# Takes in a path to an Xccdf file, returns all kinds of properties about it
 # and saves it in our database
-class XCCDFReportParser
-  include ::XCCDFReport::Profiles
-  include ::XCCDFReport::Rules
-  include ::XCCDFReport::RuleReferences
+class XccdfReportParser
+  include ::Xccdf::Profiles
+  include ::Xccdf::Rules
+  include ::Xccdf::RuleReferences
 
-  attr_reader :report_path, :oscap_parser
+  attr_reader :report_path, :test_result_file
 
   def initialize(report_contents, message)
     raise ::EmptyMetadataError if message['metadata'].blank?
@@ -26,12 +26,12 @@ class XCCDFReportParser
     @account = Account.find_or_create_by(account_number: message['account'])
     @metadata = message['metadata']
     @host_inventory_id = message['id']
-    @oscap_parser = OpenscapParser::Base.new(report_contents)
+    @test_result_file = OpenscapParser::TestResultFile.new(report_contents)
     check_report_format
   end
 
   def check_report_format
-    raise WrongFormatError unless @oscap_parser.report_xml.at_xpath(
+    raise WrongFormatError unless @test_result_file.report_xml.at_xpath(
       './/TestResult/benchmark/@href'
     ).value.match?('.*-ds.xml')
   end
@@ -57,14 +57,23 @@ class XCCDFReportParser
   end
 
   def report_host
-    @metadata&.dig('fqdn') || @oscap_parser.host
+    @metadata&.dig('fqdn') || @test_result_file.host
   end
 
-  def save_all
+  def import!
     Host.transaction do
-      save_profiles
-      save_rule_references
-      save_rules
+      @benchmark = save_benchmark(op_benchmark: @test_result_file.benchmark)
+      @rule_references = save_rule_references(op_rule_references:
+                                              benchmark.rule_references)
+      @rules = save_rules(benchmark: benchmark,
+                          rule_references: rule_references,
+                          op_rules: @test_result_file.benchmark.rules)
+
+      @profiles = save_profiles(benchmark: benchmark,
+                                rules: rules,
+                                op_profiles:
+                                @test_result_file.benchmark.profiles)
+
       save_host
       invalidate_cache
       save_rule_results
@@ -72,7 +81,7 @@ class XCCDFReportParser
   end
 
   def save_rule_results
-    results = @oscap_parser.rule_results
+    results = @test_result_file.rule_results
                            .each_with_object([]) do |rule_result, rule_results|
       rule_results << RuleResult.new(rule_result_attrs(rule_result))
     end
@@ -86,8 +95,8 @@ class XCCDFReportParser
       host: @host,
       rule_id: rule_results_rule_ids[rule_result.id],
       result: rule_result.result,
-      start_time: @oscap_parser.start_time.in_time_zone,
-      end_time: @oscap_parser.end_time.in_time_zone
+      start_time: @test_result_file.start_time.in_time_zone,
+      end_time: @test_result_file.end_time.in_time_zone
     }
   end
 
@@ -100,7 +109,7 @@ class XCCDFReportParser
 
   def rule_results_rule_ids
     @rule_results_rule_ids ||= Rule.where(
-      ref_id: @oscap_parser.rule_results.map(&:id)
+      ref_id: @test_result_file.rule_results.map(&:id)
     ).pluck(:ref_id, :id).to_h
   end
 end

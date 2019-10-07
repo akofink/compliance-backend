@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module XCCDFReport
+module Xccdf
   # Methods related to saving rule references and finding which rules
   # they belong to
   module RuleReferences
@@ -26,6 +26,23 @@ module XCCDFReport
           references = RuleReference.find_from_oscap(oscap_rule.references)
           rule_record.rule_references = references
         end
+      end
+
+      def save_rule_references(op_rule_references: [])
+        rule_references = op_rule_references.map do |op_rule_reference|
+          find_rule_reference(op_rule_reference: op_rule_reference)
+        end
+
+        RuleReference.import(rule_references, ignore: true)
+
+        rule_references
+      end
+
+      def find_rule_reference(op_rule_reference: OpenscapParser::RuleRefernece)
+        ::RuleReference.find_or_initialize_by(
+          href: op_rule_reference.href,
+          label: op_rule_reference.label
+        )
       end
 
       private

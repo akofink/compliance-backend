@@ -15,7 +15,7 @@ class Rule < ApplicationRecord
   alias references rule_references
   has_one :rule_identifier, dependent: :destroy
   alias identifier rule_identifier
-  belongs_to :benchmark, class_name: "Xccdf::Benchmark"
+  belongs_to :benchmark, class_name: 'Xccdf::Benchmark'
 
   validates :title, presence: true
   validates :ref_id, uniqueness: { scope: %i[benchmark_id] }, presence: true
