@@ -13,7 +13,7 @@ class RbacApi
     body['data'].find do |access_check|
       return true if access_check['permission'] == 'compliance:*:*'
     end
-  rescue Faraday::ClientError => e
+  rescue Faraday::ClientError, Faraday::ConnectionError => e
     Rails.logger.info("#{e.message} #{e.response}")
   end
 
