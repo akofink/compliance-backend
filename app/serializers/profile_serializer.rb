@@ -7,6 +7,9 @@ class ProfileSerializer
   attributes :name, :ref_id, :description, :score, :parent_profile_id, :external
   attribute :canonical, &:canonical?
   attribute :tailored, &:tailored?
+  attribute :parent_profile_id do |profile|
+    profile.parent_profile&.id
+  end
   attribute :total_host_count do |profile|
     profile.hosts.count
   end
