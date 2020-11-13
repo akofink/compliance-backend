@@ -26,8 +26,8 @@ class DeleteTestResultMutationTest < ActiveSupport::TestCase
     test_results(:one).update! host: hosts(:one), profile: profiles(:one)
   end
 
-  test 'delete a test result keeps the profile if not-external' do
-    profiles(:one).update(policy_object: policies(:one))
+  test 'delete a test result keeps the profile if part of a policy' do
+    profiles(:one).update(policy_object: policies(:one), external: true)
     assert_difference('TestResult.count', -1) do
       assert_difference('Profile.count', 0) do
         assert_difference('ProfileHost.count', 0) do
