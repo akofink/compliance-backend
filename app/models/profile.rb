@@ -13,13 +13,12 @@ class Profile < ApplicationRecord
   belongs_to :benchmark, class_name: 'Xccdf::Benchmark'
   belongs_to :parent_profile, class_name: 'Profile', optional: true
 
+  # This validation can be probably deleted?
+  # It seems to me as identical with the next one
   validates :ref_id, uniqueness: {
-    scope: %i[account_id benchmark_id external policy_id]
+    scope: %i[account_id benchmark_id os_minor_version policy_id],
+    message: 'must be unique in a policy OS version'
   }, presence: true
-  validates :ref_id, uniqueness: {
-    scope: %i[account_id benchmark_id policy_id],
-    message: 'must be unique in a policy'
-  }, if: :policy_id
   validates :ref_id, uniqueness: {
     scope: %i[account_id benchmark_id],
     conditions: -> { where(external: false) },
@@ -29,6 +28,9 @@ class Profile < ApplicationRecord
     scope: %i[ref_id account_id benchmark_id],
     conditions: -> { where(policy_id: nil) }
   }, unless: :policy_id
+  validates :os_minor_version, uniqueness: {
+    scope: %i[account_id benchmark_id policy_id]
+  }, if: -> { os_minor_version.present? }
   validates :name, presence: true
   validates :benchmark_id, presence: true
   validates :account, presence: true, if: -> { hosts.any? }
@@ -74,12 +76,13 @@ class Profile < ApplicationRecord
     parent_profile_id.blank?
   end
 
-  def clone_to(account:, policy:)
+  def clone_to(account:, policy:, os_minor_version: '')
     new_profile = in_account(account, policy)
     if new_profile.nil?
       (new_profile = dup).update!(account: account,
                                   parent_profile: self,
                                   external: true,
+                                  os_minor_version: os_minor_version,
                                   policy: policy)
       new_profile.update_rules(ref_ids: rules.pluck(:ref_id))
     end

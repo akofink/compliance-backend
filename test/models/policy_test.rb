@@ -90,6 +90,10 @@ class PolicyTest < ActiveSupport::TestCase
   context 'update_hosts' do
     should 'add new hosts to an empty host set' do
       policies(:one).update!(hosts: [])
+      profiles(:one).update!(account: accounts(:test))
+      policies(:one).update!(profiles: [profiles(:one)])
+      profiles(:one).update!(parent_profile: profiles(:two))
+
       assert_empty(policies(:one).hosts)
       assert_difference('policies(:one).hosts.count', hosts.count) do
         changes = policies(:one).update_hosts(hosts.pluck(:id))
@@ -99,6 +103,9 @@ class PolicyTest < ActiveSupport::TestCase
 
     should 'add new hosts to an existing host set' do
       policies(:one).update!(hosts: hosts[0...-1])
+      profiles(:one).update!(account: accounts(:test))
+      policies(:one).update!(profiles: [profiles(:one)])
+
       assert_not_empty(policies(:one).hosts)
       assert_difference('policies(:one).hosts.count', 1) do
         changes = policies(:one).update_hosts(hosts.pluck(:id))
@@ -117,6 +124,9 @@ class PolicyTest < ActiveSupport::TestCase
 
     should 'add new and remove old hosts from an existing host set' do
       policies(:one).update!(host_ids: hosts.pluck(:id)[0...-1])
+      profiles(:one).update!(account: accounts(:test))
+      policies(:one).update!(profiles: [profiles(:one)])
+
       assert_not_empty(policies(:one).hosts)
       assert_difference('policies(:one).hosts.count', 0) do
         changes = policies(:one).update_hosts(hosts.pluck(:id)[1..-1])
