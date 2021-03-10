@@ -51,8 +51,50 @@ class Policy < ApplicationRecord
 
     removed = policy_hosts.where.not(host_id: new_host_ids).destroy_all
     imported = PolicyHost.import_from_policy(id, new_host_ids - host_ids)
+    update_os_versions
 
     [imported.ids.count, removed.count]
+  end
+
+  def update_os_minor_versions
+    # Ignore already stored minor versions
+    stored_versions = profiles.pluck(:os_minor_version)
+    versions = Host.os_minor_versions(hosts.pluck(:id)).reject do |version|
+      stored_versions.include?(version)
+    end
+
+    versions.each do |version|
+      if initial_profile.os_minor_version == '' && SupportedSsg.supported?(
+        ssg_version: initial_profile.ssg_version,
+        os_major_version: os_major_version,
+        os_minor_version: version
+      )
+        initial_profile.update(os_minor_version: version)
+      else
+        # This is probably super ineffective and will optimize it after it
+        # has been validated as the right solution for this
+        Profile.canonical.find_by(
+          ref_id: initial_profile.ref_id,
+          benchmark: Xccdf::Benchmark.find_by(
+            version: SupportedSsg.ssg_versions_for_os(
+              initial_profile.os_major_version,
+              version
+            ).max_by { |ssg_v| Gem::Version.new(ssg_v) }
+            # I'm not sure if I should pick the latest version here
+            # or go with all supported versions to find the right
+            # benchmark and rule out the old version a level above
+            # on the Profile somehow
+          )
+        ).clone_to(
+          account: account,
+          os_minor_version: version,
+          policy: self
+        )
+        # The `in_account` call in the `clone_to` will always return `nil`
+        # as we ruled out the already assigned versions in the reject above.
+        # So we might be able to spare a query here by not calling it...
+      end
+    end
   end
 
   def compliant?(host)
