@@ -135,6 +135,58 @@ class PolicyTest < ActiveSupport::TestCase
     assert_equal '7', policies(:one).os_major_version
   end
 
+  context 'update_os_minor_versions' do
+    setup do
+      @profile = Profile.new(parent_profile: profiles(:two),
+                             account: accounts(:one),
+                             policy: policies(:one)).fill_from_parent
+      policies(:one).update!(account: accounts(:one))
+      @profile.save!
+
+      PolicyHost.create!(policy: @profile.policy, host: hosts(:one))
+    end
+
+    should 'update initial_profile when host has the latest minor version' do
+      @profile.benchmark.update!(version: '0.1.33')
+
+      @profile.policy.update_os_minor_versions
+
+      assert_equal @profile.reload.os_minor_version, '4'
+    end
+
+    context 'child profiles' do
+      setup do
+        @new_benchmark = benchmarks(:one).dup
+        @new_benchmark.assign_attributes(version: '0.1.33')
+        @new_benchmark.save!
+
+        @new_profile = profiles(:two).dup
+        @new_profile.assign_attributes(benchmark: @new_benchmark)
+        @new_profile.save!
+      end
+
+      should 'create a new profile when it does not exist' do
+        @profile.policy.update_os_minor_versions
+
+        assert_equal @profile.reload.os_minor_version, ''
+        assert_equal @profile.policy.profiles.external(true)
+                             .first.os_minor_version, '4'
+      end
+
+      should 'update existing profile according the minor version' do
+        child_profile = @new_profile.clone_to(
+          account: accounts(:one),
+          policy: @profile.policy
+        )
+
+        @profile.policy.update_os_minor_versions
+
+        assert_equal @profile.reload.os_minor_version, ''
+        assert_equal child_profile.reload.os_minor_version, '4'
+      end
+    end
+  end
+
   context 'destroy_orphaned_business_objective' do
     setup do
       assert_empty business_objectives(:one).policies
