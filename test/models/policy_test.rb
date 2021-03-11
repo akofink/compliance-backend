@@ -98,6 +98,8 @@ class PolicyTest < ActiveSupport::TestCase
     end
 
     should 'add new hosts to an existing host set' do
+      profiles(:one).update!(policy: policies(:one), external: false,
+                             account: accounts(:one))
       policies(:one).update!(hosts: hosts[0...-1])
       assert_not_empty(policies(:one).hosts)
       assert_difference('policies(:one).hosts.count', 1) do
@@ -116,6 +118,8 @@ class PolicyTest < ActiveSupport::TestCase
     end
 
     should 'add new and remove old hosts from an existing host set' do
+      profiles(:one).update!(policy: policies(:one), external: false,
+                             account: accounts(:one))
       policies(:one).update!(host_ids: hosts.pluck(:id)[0...-1])
       assert_not_empty(policies(:one).hosts)
       assert_difference('policies(:one).hosts.count', 0) do

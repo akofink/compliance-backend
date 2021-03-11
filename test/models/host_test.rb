@@ -249,6 +249,6 @@ class HostTest < ActiveSupport::TestCase
   end
 
   test '#os_minor_versions' do
-    assert_equal Host.os_minor_versions([hosts(:one)]), [7]
+    assert_equal Host.os_minor_versions([hosts(:one)]), [4]
   end
 end
